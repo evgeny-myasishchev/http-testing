@@ -1,0 +1,5 @@
+= HttpTesting
+
+Library for testing HTTP requests in Ruby.
+
+Samples will come soon :)
