@@ -20,6 +20,10 @@ class HttpTesting::Context
     @error     = nil
   end
   
+  def self.start(port, options = {}, &block)
+    new(port, options).start(&block)
+  end
+  
   def start(&block)
     @started   = false
     @completed = false
@@ -51,6 +55,7 @@ class HttpTesting::Context
     @monitor.synchronize do
       @started_cond.wait_until { @started }
     end
+    self
   end
   
   def wait
