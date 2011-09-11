@@ -3,23 +3,27 @@ require 'monitor'
 
 class HttpTesting::Context
   include WEBrick
+  # extend MonitorMixin
   
-  WAIT_TIMEOUT = 0 #Works with no timeout :)
-  
-  def initialize(port)
+  def initialize(port, options = {})
+    @options = {
+      :wait_timeout => 3 #seconds
+    }.merge options
     @port = port
     
-    @monitor = Monitor.new
+    @monitor      = Monitor.new
     @completed_cond = @monitor.new_cond
-    @started_cond = @monitor.new_cond
+    @started_cond   = @monitor.new_cond
     
+    @started   = false
     @completed = false
-    @error = nil
+    @error     = nil
   end
   
   def start(&block)
+    @started   = false
     @completed = false
-    @error = nil
+    @error     = nil
     
     #Starting separate thread for the server
     @main = Thread.start do
@@ -36,24 +40,25 @@ class HttpTesting::Context
           @completed_cond.signal
         end
       end
-      
+      @started = true
+      @monitor.synchronize do
+        @started_cond.signal
+      end
       @server.start
     end
     
     #Waiting for server to start
     @monitor.synchronize do
-      @started_cond.wait(WAIT_TIMEOUT)
+      @started_cond.wait_until { @started }
     end
   end
   
   def wait
     @monitor.synchronize do
-      @completed_cond.wait(WAIT_TIMEOUT)
+      @completed_cond.wait(@options[:wait_timeout]) unless @completed
     end
-    
     @server.shutdown
-    
-    raise "HTTP Connection was not completed within #{WAIT_TIMEOUT} seconds" unless @completed
+    raise HttpTesting::HttpTestingError.new "HTTP Connection was not completed within #{@options[:wait_timeout]} seconds" unless @completed
     raise @error if @error
   end
 end
