@@ -10,7 +10,8 @@ Gem::Specification.new do |s|
   s.summary     = %q{Library for testing HTTP requests in Ruby.}
   s.description = %q{HttpTesting allows testing HTTP requests.}
 
-  s.rubyforge_project = 'http-testing'
+  s.rubyforge_project     = 'http-testing'
+  s.required_ruby_version = '>= 1.9.3'
 
   s.add_development_dependency 'rspec', '>= 2.0.0'
 
