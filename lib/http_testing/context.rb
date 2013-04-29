@@ -31,7 +31,7 @@ class HttpTesting::Context
     
     #Starting separate thread for the server
     @main = Thread.start do
-      @server = HTTPServer.new( :Port => @port, :Logger => Log.new(nil, BasicLog::ERROR), :AccessLog => [])
+      @server = HTTPServer.new(Port: @port, Logger: Log.new(nil, BasicLog::ERROR), AccessLog: [])
       @server.mount_proc("/", nil) do |request, response|
         begin
           yield(request, response)
