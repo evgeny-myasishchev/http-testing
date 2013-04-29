@@ -17,7 +17,7 @@ Library for testing HTTP requests in Ruby.
     #Set response
   end
 
-  #Your code that will send request goes here
+  #Your code that will send the request goes here
 
   #Wait for request to complete
   c.wait
