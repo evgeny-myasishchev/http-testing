@@ -35,7 +35,7 @@ class HttpTesting::Context
     @error     = nil
     
     #Starting separate thread for the server
-    @log.info 'Starting main worker thread...'
+    @log.debug 'Starting main worker thread...'
     @main = Thread.start do
       @log.info "Starting http server on port: #{@port}."
       
@@ -47,22 +47,14 @@ class HttpTesting::Context
         AccessLog: access_log,
         RequestCallback: proc do |request, response|
           if @options[:requests_dumps_path]
-            FileUtils.mkdirs(@options[:requests_dumps_path]) unless File.exists?(@options[:requests_dumps_path])
-            timestamp = Time.now.strftime('%Y%m%d%H%M%S%L')
-            request_dump_file = File.join(@options[:requests_dumps_path], "#{timestamp}-#{request.request_method}.txt")
-            File.open(request_dump_file, 'w') do |f|
-              f.write(request.request_line)
-              f.write(request.raw_header.join(''))
-              f.write("\r\n")
-              f.write(request.body)
-            end
+            dump_request(request, @options[:requests_dumps_path])
           end
         end)
       
       @server.mount_proc("/", nil) do |request, response|
         @log.info "Connection started. Path: #{request.path}."
         begin
-          @log.info 'Yielding request and response...'
+          @log.debug 'Yielding request and response...'
           yield(request, response)
         rescue
           @log.error "Block raised error #{$!}"
@@ -93,7 +85,7 @@ class HttpTesting::Context
   def wait
     @monitor.synchronize do
       unless @completed
-        @log.info 'Waiting for connection to complete...'
+        @log.debug "Waiting for connection to complete. Wait timeout: #{@options[:wait_timeout]} seconds."
         @completed_cond.wait(@options[:wait_timeout]) 
       end
     end
@@ -102,4 +94,18 @@ class HttpTesting::Context
     raise HttpTesting::HttpTestingError.new "HTTP Connection was not completed within #{@options[:wait_timeout]} seconds" unless @completed
     raise @error if @error
   end
+
+  private
+    def dump_request(request, dumps_path)
+      FileUtils.mkpath(dumps_path) unless File.exists?(dumps_path)
+      timestamp = Time.now.strftime('%Y%m%d%H%M%S%L')
+      request_dump_path = File.join(dumps_path, "#{timestamp}-#{request.request_method}.txt")
+      @log.debug "Dumping request to: #{request_dump_path}"
+      File.open(request_dump_path, 'w') do |f|
+        f.write(request.request_line)
+        f.write(request.raw_header.join(''))
+        f.write("\r\n")
+        f.write(request.body)
+      end
+    end
 end
