@@ -8,6 +8,7 @@ class HttpTesting::Context
     @options = {
       wait_timeout: 3, #seconds
       verbose: false,
+      requests_dumps_path: nil, #Path to the folder to dump requests
       log_factory: HttpTesting::DefaultLogFactory
     }.merge options
     @port = port
@@ -37,7 +38,27 @@ class HttpTesting::Context
     @log.info 'Starting main worker thread...'
     @main = Thread.start do
       @log.info "Starting http server on port: #{@port}."
-      @server = HTTPServer.new(Port: @port, Logger: Log.new(nil, BasicLog::ERROR), AccessLog: [])
+      
+      access_log = []
+      access_log << [$stdout, WEBrick::AccessLog::COMMON_LOG_FORMAT] if @options[:verbose]
+      @server = HTTPServer.new(
+        Port: @port, 
+        Logger: Log.new(nil, BasicLog::ERROR), 
+        AccessLog: access_log,
+        RequestCallback: proc do |request, response|
+          if @options[:requests_dumps_path]
+            FileUtils.mkdirs(@options[:requests_dumps_path]) unless File.exists?(@options[:requests_dumps_path])
+            timestamp = Time.now.strftime('%Y%m%d%H%M%S%L')
+            request_dump_file = File.join(@options[:requests_dumps_path], "#{timestamp}-#{request.request_method}.txt")
+            File.open(request_dump_file, 'w') do |f|
+              f.write(request.request_line)
+              f.write(request.raw_header.join(''))
+              f.write("\r\n")
+              f.write(request.body)
+            end
+          end
+        end)
+      
       @server.mount_proc("/", nil) do |request, response|
         @log.info "Connection started. Path: #{request.path}."
         begin
