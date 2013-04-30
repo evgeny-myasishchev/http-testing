@@ -41,8 +41,10 @@ class HttpTesting::Context
       @server.mount_proc("/", nil) do |request, response|
         @log.info "Connection started. Path: #{request.path}."
         begin
+          @log.info 'Yielding request and response...'
           yield(request, response)
         rescue
+          @log.error "Block raised error #{$!}"
           @error = $!
         end
         
